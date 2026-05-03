@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Промпт‑генератор для филологов РБ</title>
+  <style>
+    :root{--bg:#0a1024;--card:#121b3b;--line:#2f3f75;--text:#edf2ff;--muted:#aab8e2;--accent:#74a9ff;--ok:#84f0d5}
+    *{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at 20% 0,#18295e,#0a1024 45%);color:var(--text);font-family:Inter,system-ui,sans-serif}
+    .wrap{max-width:1200px;margin:auto;padding:20px}.top{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+    .badge{background:#1e2d5a;border:1px solid var(--line);padding:4px 10px;border-radius:999px;color:var(--ok);font-size:.8rem}
+    h1{margin:.3rem 0;font-size:clamp(1.35rem,2.8vw,2rem)} p{color:var(--muted)}
+    .grid{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px} label{display:block;font-size:.86rem;color:var(--muted);margin:10px 0 4px}
+    input,select,textarea{width:100%;background:#0d1634;color:var(--text);border:1px solid #364a88;border-radius:10px;padding:10px}
+    textarea{min-height:84px;resize:vertical}.checks{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+    .check{font-size:.88rem;color:#dce5ff}.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+    button{border:none;border-radius:10px;padding:9px 12px;font-weight:700;cursor:pointer} .main{background:var(--accent);color:#05122f}.ghost{background:#263a70;color:#e8efff}
+    .out{white-space:pre-wrap;background:#0a132e;border:1px solid #334983;border-radius:12px;padding:12px;min-height:360px;line-height:1.45}
+    @media(max-width:980px){.grid{grid-template-columns:1fr}.row,.checks{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>Промпт‑генератор для учителей русского языка и литературы РБ</h1>
+      <p>Конструктор учитывает школьный контекст Республики Беларусь: КТП, ЦЭ/ЦТ, дифференциацию, оценивание и этику обратной связи.</p>
+    </div>
+    <span class="badge">Офлайн · без зависимостей</span>
+  </div>
+
+  <div class="grid">
+    <section class="card">
+      <div class="row">
+        <div>
+          <label>Роль ИИ</label>
+          <select id="role"><option>Методист по русскому языку и литературе (РБ)</option><option>Эксперт по формирующему оцениванию</option><option>Тьютор по подготовке к ЦЭ/ЦТ</option></select>
+        </div>
+        <div>
+          <label>Тип запроса</label>
+          <select id="task"><option>План-конспект урока</option><option>Проверка сочинения с комментариями</option><option>Подготовка к ЦЭ/ЦТ</option><option>Дифференцированные задания</option><option>Внеклассное мероприятие</option></select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div><label>Класс</label><input id="grade" value="9 класс" /></div>
+        <div><label>Тема</label><input id="topic" value="Обособленные члены предложения" /></div>
+      </div>
+
+      <label>Цели занятия</label>
+      <textarea id="goals">Сформировать умение находить и корректно пунктуационно оформлять обособленные члены, аргументировать выбор знаков препинания.</textarea>
+
+      <label>Контекст (учебник, количество часов, уровень класса)</label>
+      <textarea id="context">1 учебный час, смешанный уровень подготовки, работа по теме в рамках действующего КТП.</textarea>
+
+      <label>Ограничения и требования РБ</label>
+      <textarea id="rules">Соблюдай нормы современного русского литературного языка, педагогическую этику, возрастную уместность, прозрачные критерии оценивания.</textarea>
+
+      <div class="checks">
+        <label class="check"><input type="checkbox" id="ce" /> Добавить акцент на ЦЭ/ЦТ</label>
+        <label class="check"><input type="checkbox" id="inclusive" checked /> Добавить инклюзивные приёмы</label>
+        <label class="check"><input type="checkbox" id="rubric" checked /> Сформировать рубрикатор оценивания</label>
+        <label class="check"><input type="checkbox" id="questions" checked /> До 3 уточняющих вопросов при нехватке данных</label>
+      </div>
+
+      <div class="btns">
+        <button id="generate" class="main">Сгенерировать</button>
+        <button id="demo-lesson" class="ghost">Демо: урок</button>
+        <button id="demo-essay" class="ghost">Демо: сочинение</button>
+        <button id="copy" class="ghost">Копировать</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div id="out" class="out"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+function buildPrompt(){
+  const ce = $('ce').checked ? 'Учитывай типовые формулировки и формат заданий ЦЭ/ЦТ.' : '';
+  const incl = $('inclusive').checked ? 'Добавь 2-3 инклюзивных методических решения для учащихся с разным темпом освоения материала.' : '';
+  const rubric = $('rubric').checked ? 'Составь рубрикатор оценивания: критерий, индикаторы, типичные ошибки, рекомендации по улучшению.' : '';
+  const qs = $('questions').checked ? 'Если информации не хватает, сначала задай до 3 уточняющих вопросов.' : 'Если информации не хватает, предложи разумные допущения и пометь их.';
+
+  return `Ты — ${$('role').value}.\n\n`+
+`Контекст педагога:\n`+
+`Я работаю в школе Республики Беларусь и готовлю материал по предмету «Русский язык и литература».\n`+
+`Тип запроса: ${$('task').value}.\n`+
+`Класс: ${$('grade').value}.\n`+
+`Тема: ${$('topic').value}.\n`+
+`Дополнительный контекст: ${$('context').value.trim()}\n\n`+
+`Цели:\n${$('goals').value.trim()}\n\n`+
+`Требования:\n`+
+`1) ${$('rules').value.trim()}\n`+
+`2) Пиши ясно, профессионально, без канцеляризмов, с учебной логикой «объяснение → практика → обратная связь».\n`+
+`3) Включи примеры заданий базового и повышенного уровня.\n`+
+`4) ${qs}\n`+
+`${ce ? `5) ${ce}\n` : ''}`+
+`${incl ? `6) ${incl}\n` : ''}`+
+`${rubric ? `7) ${rubric}\n` : ''}`+
+`\nФормат ответа:\n`+
+`- 1) Краткий план (этапы и тайминг).\n`+
+`- 2) Содержание этапов (что говорит учитель и что делают учащиеся).\n`+
+`- 3) Материалы/упражнения (минимум 4).\n`+
+`- 4) Критерии оценки и обратная связь.\n`+
+`- 5) Рефлексия + домашнее задание (вариативно).\n\n`+
+`Перед финалом проведи самопроверку на соответствие целям, возрасту учащихся и педагогической этике.`;
+}
+function render(){ $('out').textContent = buildPrompt(); }
+$('generate').addEventListener('click', render);
+$('copy').addEventListener('click', async()=>{ await navigator.clipboard.writeText($('out').textContent); alert('Готово: промпт скопирован.'); });
+$('demo-lesson').addEventListener('click', ()=>{
+  $('task').value='План-конспект урока'; $('grade').value='8 класс'; $('topic').value='Прямая и косвенная речь';
+  $('goals').value='Научить преобразовывать прямую речь в косвенную и объяснять пунктуацию.'; render();
+});
+$('demo-essay').addEventListener('click', ()=>{
+  $('task').value='Проверка сочинения с комментариями'; $('grade').value='10 класс'; $('topic').value='Сочинение-рассуждение по произведению В. Быкова';
+  $('goals').value='Оценить композицию, аргументацию, речевую грамотность и дать развивающую обратную связь без демотивации.'; $('rubric').checked=true; render();
+});
+render();
+</script>
+</body>
+</html>
